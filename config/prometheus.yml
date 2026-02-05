@@ -1,0 +1,35 @@
+# =============================================================================
+# Prometheus Configuration for Multithreading Benchmark
+# =============================================================================
+
+global:
+  scrape_interval: 5s      # How frequently to scrape targets
+  evaluation_interval: 5s  # How frequently to evaluate rules
+  external_labels:
+    monitor: 'multithreading-benchmark'
+
+# Alertmanager configuration (optional, for production)
+alerting:
+  alertmanagers: []
+
+# Load rules once and periodically evaluate them
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # Benchmark Application
+  # ---------------------------------------------------------------------------
+  - job_name: 'benchmark-app'
+    static_configs:
+      - targets: ['app:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    scrape_timeout: 3s
+
+  # ---------------------------------------------------------------------------
+  # Prometheus Self-Monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

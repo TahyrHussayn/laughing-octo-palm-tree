@@ -1,0 +1,125 @@
+# =============================================================================
+# Docker Compose for Multithreading Benchmark Stack
+# =============================================================================
+#
+# Services:
+#   - app: Node.js benchmark application
+#   - prometheus: Metrics collection and storage
+#   - grafana: Visualization with embedded dashboard
+#
+# Usage:
+#   docker-compose up -d
+#   
+# Access:
+#   - App: http://localhost:3000
+#   - Prometheus: http://localhost:9090
+#   - Grafana: http://localhost:3001 (admin/admin)
+#
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Node.js Benchmark Application
+  # ===========================================================================
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: benchmark-app
+    ports:
+      - "3000:3000"
+    environment:
+      # CRITICAL: SharedArrayBuffer support and OOM prevention
+      - NODE_OPTIONS=--experimental-shared-memory --max-old-space-size=4096
+      - PORT=3000
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - benchmark-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # Prometheus - Metrics Collection
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: benchmark-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - benchmark-network
+    restart: unless-stopped
+    depends_on:
+      - app
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # Grafana - Visualization
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: benchmark-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./config/grafana-dashboard.json:/var/lib/grafana/dashboards/multithreading-dashboard.json:ro
+      - ./config/grafana-provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/multithreading-dashboard.json
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    networks:
+      - benchmark-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  benchmark-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

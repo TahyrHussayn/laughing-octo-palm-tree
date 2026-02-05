@@ -1,0 +1,353 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "multithreading-benchmark",
+    "title": "Multithreading Benchmark Dashboard",
+    "tags": ["benchmark", "multithreading", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5s",
+    "annotations": {
+      "list": []
+    },
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-15m",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Event Loop Lag",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "event_loop_lag_seconds",
+            "legendFormat": "Lag (seconds)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 0.01 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "custom": {
+              "displayMode": "gradient"
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "orientation": "auto"
+        },
+        "alert": {
+          "name": "Event Loop Lag Critical",
+          "message": "⚠️ CRITICAL: Event loop lag exceeds 100ms! Single-threaded route is blocking.",
+          "condition": {
+            "query": { "queryType": "", "refId": "A" },
+            "reducer": { "type": "last", "params": [] },
+            "evaluator": { "params": [0.1], "type": "gt" }
+          },
+          "for": "30s",
+          "severity": "critical"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate (req/s)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(request_duration_seconds_count[1m])) by (mode)",
+            "legendFormat": "{{mode}}-threaded",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "spanNulls": true
+            }
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 }
+      },
+      {
+        "id": 3,
+        "title": "Response Time Comparison",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{mode=\"single\"}[1m])) by (le))",
+            "legendFormat": "single-threaded (P95)",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{mode=\"multi\"}[1m])) by (le))",
+            "legendFormat": "multi-threaded (P95)",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth"
+            }
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+      },
+      {
+        "id": 4,
+        "title": "Active Worker Threads",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "active_worker_threads",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 16,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "blue", "value": null },
+                { "color": "green", "value": 1 },
+                { "color": "yellow", "value": 4 },
+                { "color": "red", "value": 8 }
+              ]
+            },
+            "unit": "none"
+          }
+        },
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+        "options": {
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        }
+      },
+      {
+        "id": 5,
+        "title": "Worker Task Count by Leader Status",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "worker_task_count",
+            "legendFormat": "is_leader={{is_leader}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none",
+            "custom": {
+              "displayMode": "gradient"
+            }
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage vs Shared Buffer Size",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "process_memory_bytes{type=\"heap_used\",phase=\"active\"}",
+            "legendFormat": "Main Thread Heap (Single-threaded)",
+            "refId": "A"
+          },
+          {
+            "expr": "process_memory_bytes{type=\"heap_used\",phase=\"warmed\"}",
+            "legendFormat": "Thread Pool Base Memory",
+            "refId": "B"
+          },
+          {
+            "expr": "shared_buffer_bytes",
+            "legendFormat": "Shared Buffer (Zero-Copy)",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            }
+          }
+        },
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 }
+      },
+      {
+        "id": 7,
+        "title": "CPU Core Saturation",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(request_duration_seconds_sum{mode=\"multi\"}[30s]) / rate(request_duration_seconds_count{mode=\"multi\"}[30s])",
+            "legendFormat": "Avg Response Time",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+        "options": {
+          "calculate": true,
+          "yAxis": {
+            "unit": "s",
+            "decimals": 2
+          },
+          "color": {
+            "mode": "spectrum",
+            "exponent": 0.5,
+            "colorScheme": "Spectral"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Worker Memory by Thread",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "worker_memory_bytes",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "custom": {
+              "align": "auto",
+              "displayMode": "color-background"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Value" },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "bytes"
+                },
+                {
+                  "id": "custom.displayMode",
+                  "value": "color-background"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "indexByName": {},
+              "renameByName": {
+                "thread_id": "Worker ID",
+                "Value": "Heap Used"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Total Requests & Compute Time",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "total_requests",
+            "legendFormat": "Total Requests",
+            "refId": "A"
+          },
+          {
+            "expr": "total_compute_time_ms / 1000",
+            "legendFormat": "Total Compute (s)",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "displayMode": "big"
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 12, "x": 12, "y": 0 }
+      },
+      {
+        "id": 10,
+        "title": "Memory Baseline Comparison",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "process_memory_bytes{type=\"heap_used\"}",
+            "legendFormat": "{{phase}} boot",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "custom": {
+              "displayMode": "gradient"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "blue", "value": null },
+                { "color": "green", "value": 50000000 },
+                { "color": "yellow", "value": 100000000 }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 8, "w": 8, "x": 18, "y": 0 },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "lcd",
+          "showUnfilled": true,
+          "minVizWidth": 0,
+          "minVizHeight": 10
+        }
+      }
+    ]
+  },
+  "overwrite": true
+}
