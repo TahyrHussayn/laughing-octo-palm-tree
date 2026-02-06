@@ -82,17 +82,17 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 
 # =============================================================================
-# CRITICAL: Environment Configuration
+# Environment Configuration
 # =============================================================================
 # 
-# --experimental-shared-memory: Required for SharedArrayBuffer support
-#   Needed by Mutex, SharedJsonBuffer, Barrier, and other sync primitives.
-#
 # --max-old-space-size=4096: Prevents OOM errors with heavy Fibonacci
 #   calculations and large Uint8Array transfers (10MB per request).
+# 
+# Note: SharedArrayBuffer works in Node.js by default (no flags needed).
+# The COOP/COEP headers in Express enable cross-origin isolation.
 #
 # =============================================================================
-ENV NODE_OPTIONS="--experimental-shared-memory --max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV PORT=3000
 ENV NODE_ENV=production
 

@@ -30,11 +30,13 @@ services:
     container_name: benchmark-app
     ports:
       - "3000:3000"
+    # Ensure this environment section is clean
     environment:
-      # CRITICAL: SharedArrayBuffer support and OOM prevention
-      - NODE_OPTIONS=--experimental-shared-memory --max-old-space-size=4096
+      - NODE_OPTIONS=--max-old-space-size=4096
       - PORT=3000
       - NODE_ENV=production
+    # Explicitly call the server
+    command: ["node", "dist/server.js"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
